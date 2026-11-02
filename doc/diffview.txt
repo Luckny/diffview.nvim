@@ -431,6 +431,42 @@ hg_cmd                                          *diffview-config-hg_cmd*
         If your Mercurial install bundles the `chg` binary, this can be
         configured here to have a significant performance boost.
 
+viewed_files                                    *diffview-config-viewed_files*
+        Type: `table`, Default: (see defaults)
+
+        Configure persistent viewed-file marks in diff views. Marks survive
+        closing Diffview and restarting Neovim. They belong to the repository
+        and resolved revision pair; path-filtered openings of that comparison
+        share marks. Staged, working, and conflicting entries are tracked
+        separately.
+
+        Viewed files, and folders whose descendants are all viewed, use the
+        `DiffviewFilePanelViewed` highlight. Fully viewed folders collapse
+        automatically, but can be expanded normally.
+
+        The default `<leader>v` mapping can be replaced like any other
+        |diffview-config-keymaps| entry: >
+
+            local actions = require("diffview.actions")
+            require("diffview").setup({
+              keymaps = {
+                file_panel = {
+                  { "n", "<leader>v", false },
+                  { "n", "v", actions.toggle_viewed },
+                },
+              },
+            })
+<
+        Fields: ~
+            {post_mark_action} ("stay"|"next")
+                What to do after marking an entry viewed. `"stay"` keeps the
+                current diff open. `"next"` opens the next unviewed file in
+                panel order, wrapping once.
+
+            {retention_days} (integer)
+                Remove comparison records that have not been used for this
+                many days.
+
 view.x.layout                                   *diffview-config-view.x.layout*
         Type: >
             "diff1_plain"
@@ -940,6 +976,12 @@ close_fold                                      *diffview-actions-close_fold*
 
         Collapse the fold of the subject.
 
+clear_viewed_files                              *diffview-actions-clear_viewed_files*
+        Contexts: `diff_view`, `file_panel`
+
+        Unmark every file in the current comparison and expand its folders.
+        This action has no default mapping.
+
 conflict_choose({version})                      *diffview-actions-conflict_choose*
         Contexts: `merge_tool`
 
@@ -1220,6 +1262,14 @@ toggle_stage_entry                              *diffview-actions-toggle_stage_e
         Contexts: `diff_view`, `file_panel`
 
         Stage / unstage the subject.
+
+toggle_viewed                                   *diffview-actions-toggle_viewed*
+        Contexts: `file_panel`
+
+        Mark or unmark the selected file as viewed. On a folder, mark every
+        descendant when any descendant is unviewed; otherwise unmark every
+        descendant. The default mapping is `<leader>v`. See
+        |diffview-config-keymaps| to remap or disable it.
 
 unstage_all                                     *diffview-actions-unstage_all*
         Contexts: `diff_view`, `file_panel`

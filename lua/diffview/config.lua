@@ -53,6 +53,10 @@ M.defaults = {
     fold_open = "",
     done = "✓",
   },
+  viewed_files = {
+    post_mark_action = "stay",
+    retention_days = 30,
+  },
   view = {
     default = {
       layout = "diff2_horizontal",
@@ -180,6 +184,7 @@ M.defaults = {
       { "n", "s",              actions.toggle_stage_entry,             { desc = "Stage / unstage the selected entry" } },
       { "n", "S",              actions.stage_all,                      { desc = "Stage all entries" } },
       { "n", "U",              actions.unstage_all,                    { desc = "Unstage all entries" } },
+      { "n", "<leader>v",      actions.toggle_viewed,                  { desc = "Mark or unmark the selected file or folder as viewed" } },
       { "n", "X",              actions.restore_entry,                  { desc = "Restore entry to the state on the left side" } },
       { "n", "L",              actions.open_commit_log,                { desc = "Open the commit log panel" } },
       { "n", "zo",             actions.open_fold,                      { desc = "Expand fold" } },
@@ -600,6 +605,18 @@ function M.setup(user_config)
         ))
         view[kind].layout = M.defaults.view[kind].layout
       end
+    end
+  end
+
+  do
+    local viewed_files = M._config.viewed_files
+    if not vim.tbl_contains({ "stay", "next" }, viewed_files.post_mark_action) then
+      utils.err("'viewed_files.post_mark_action' must be one of ('stay', 'next').")
+      viewed_files.post_mark_action = M.defaults.viewed_files.post_mark_action
+    end
+    if type(viewed_files.retention_days) ~= "number" or viewed_files.retention_days < 1 then
+      utils.err("'viewed_files.retention_days' must be a positive number.")
+      viewed_files.retention_days = M.defaults.viewed_files.retention_days
     end
   end
 

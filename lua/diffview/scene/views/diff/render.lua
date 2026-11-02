@@ -4,43 +4,59 @@ local utils = require("diffview.utils")
 
 local pl = utils.path
 
+---@param dir DirData
+---@return boolean
+local function dir_is_viewed(dir)
+  local leaves = dir._node:leaves()
+  if #leaves == 0 then return false end
+
+  for _, node in ipairs(leaves) do
+    if not node.data.viewed then return false end
+  end
+  return true
+end
+
 ---@param comp  RenderComponent
 ---@param show_path boolean
 ---@param depth integer|nil
 local function render_file(comp, show_path, depth)
   ---@type FileEntry
   local file = comp.context
+  local viewed_hl = file.viewed and "DiffviewFilePanelViewed" or nil
 
-  comp:add_text(file.status .. " ", hl.get_git_hl(file.status))
+  comp:add_text(file.status .. " ", viewed_hl or hl.get_git_hl(file.status))
 
   if depth then
     comp:add_text(string.rep(" ", depth * 2 + 2))
   end
 
   local icon, icon_hl = hl.get_file_icon(file.basename, file.extension)
-  comp:add_text(icon, icon_hl)
-  comp:add_text(file.basename, file.active and "DiffviewFilePanelSelected" or "DiffviewFilePanelFileName")
+  comp:add_text(icon, viewed_hl or icon_hl)
+  comp:add_text(
+    file.basename,
+    viewed_hl or (file.active and "DiffviewFilePanelSelected" or "DiffviewFilePanelFileName")
+  )
 
   if file.stats then
     if file.stats.additions then
-      comp:add_text(" " .. file.stats.additions, "DiffviewFilePanelInsertions")
-      comp:add_text(", ")
-      comp:add_text(tostring(file.stats.deletions), "DiffviewFilePanelDeletions")
+      comp:add_text(" " .. file.stats.additions, viewed_hl or "DiffviewFilePanelInsertions")
+      comp:add_text(", ", viewed_hl)
+      comp:add_text(tostring(file.stats.deletions), viewed_hl or "DiffviewFilePanelDeletions")
     elseif file.stats.conflicts then
       local has_conflicts = file.stats.conflicts > 0
       comp:add_text(
         " " .. (has_conflicts and file.stats.conflicts or config.get_config().signs.done),
-        has_conflicts and "DiffviewFilePanelConflicts" or "DiffviewFilePanelInsertions"
+        viewed_hl or (has_conflicts and "DiffviewFilePanelConflicts" or "DiffviewFilePanelInsertions")
       )
     end
   end
 
   if file.kind == "conflicting" and not (file.stats and file.stats.conflicts) then
-    comp:add_text(" !", "DiffviewFilePanelConflicts")
+    comp:add_text(" !", viewed_hl or "DiffviewFilePanelConflicts")
   end
 
   if show_path then
-    comp:add_text(" " .. file.parent_path, "DiffviewFilePanelPath")
+    comp:add_text(" " .. file.parent_path, viewed_hl or "DiffviewFilePanelPath")
   end
 
   comp:ln()
@@ -89,22 +105,26 @@ local function render_file_tree_recurse(depth, comp)
   local dir = comp.components[1]
   local items = comp.components[2]
   local ctx = comp.context --[[@as DirData ]]
+  local viewed_hl = dir_is_viewed(ctx) and "DiffviewFilePanelViewed" or nil
 
   dir:add_text(
     get_dir_status_text(ctx, conf.file_panel.tree_options) .. " ",
-    hl.get_git_hl(ctx.status)
+    viewed_hl or hl.get_git_hl(ctx.status)
   )
   dir:add_text(string.rep(" ", depth * 2))
-  dir:add_text(ctx.collapsed and conf.signs.fold_closed or conf.signs.fold_open, "DiffviewNonText")
+  dir:add_text(
+    ctx.collapsed and conf.signs.fold_closed or conf.signs.fold_open,
+    viewed_hl or "DiffviewNonText"
+  )
 
   if conf.use_icons then
     dir:add_text(
       " " .. (ctx.collapsed and conf.icons.folder_closed or conf.icons.folder_open) .. " ",
-      "DiffviewFolderSign"
+      viewed_hl or "DiffviewFolderSign"
     )
   end
 
-  dir:add_text(ctx.name, "DiffviewFolderName")
+  dir:add_text(ctx.name, viewed_hl or "DiffviewFolderName")
   dir:ln()
 
   if not ctx.collapsed then

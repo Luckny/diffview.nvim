@@ -619,6 +619,7 @@ local action_names = {
   "close",
   "close_all_folds",
   "close_fold",
+  "clear_viewed_files",
   "copy_hash",
   "focus_entry",
   "focus_files",
@@ -644,6 +645,7 @@ local action_names = {
   "toggle_flatten_dirs",
   "toggle_fold",
   "toggle_stage_entry",
+  "toggle_viewed",
   "unstage_all",
 }
 

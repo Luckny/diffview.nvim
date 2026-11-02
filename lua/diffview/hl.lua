@@ -443,6 +443,7 @@ M.hl_links = {
   FilePanelFileName = "Normal",
   FilePanelSelected = "Type",
   FilePanelPath = "Comment",
+  FilePanelViewed = "Comment",
   FilePanelInsertions = "diffAdded",
   FilePanelDeletions = "diffRemoved",
   FilePanelConflicts = "DiagnosticSignWarn",

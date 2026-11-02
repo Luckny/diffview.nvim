@@ -269,6 +269,14 @@ return function(view)
     refresh_files = function()
       view:update_files()
     end,
+    toggle_viewed = function()
+      if not view.panel:is_focused() then return end
+      local item = view:infer_cur_file(true)
+      if item then view:toggle_viewed(item) end
+    end,
+    clear_viewed_files = function()
+      view:clear_viewed_files()
+    end,
     open_all_folds = function()
       if not view.panel:is_focused() or view.panel.listing_style ~= "tree" then return end
 

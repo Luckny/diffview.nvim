@@ -16,6 +16,7 @@ local config = lazy.require("diffview.config") ---@module "diffview.config"
 local debounce = lazy.require("diffview.debounce") ---@module "diffview.debounce"
 local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
 local vcs_utils = lazy.require("diffview.vcs.utils") ---@module "diffview.vcs.utils"
+local viewed_state = lazy.require("diffview.viewed_state") ---@module "diffview.viewed_state"
 local GitAdapter = lazy.access("diffview.vcs.adapters.git", "GitAdapter") ---@type GitAdapter|LazyModule
 
 local api = vim.api
@@ -46,6 +47,7 @@ local M = {}
 ---@field initialized boolean
 ---@field valid boolean
 ---@field watcher uv_fs_poll_t # UV fs poll handle.
+---@field viewed_comparison_key string
 local DiffView = oop.create_class("DiffView", StandardView.__get())
 
 ---DiffView constructor
@@ -57,6 +59,12 @@ function DiffView:init(opt)
   self.rev_arg = opt.rev_arg
   self.left = opt.left
   self.right = opt.right
+  self.viewed_comparison_key = viewed_state.activate(
+    self.adapter,
+    self.left,
+    self.right,
+    config.get_config().viewed_files.retention_days
+  )
   self.initialized = false
   self.options = opt.options or {}
   self.options.selected_file = self.options.selected_file
@@ -77,6 +85,134 @@ function DiffView:init(opt)
   self.attached_bufs = {}
   self.emitter:on("file_open_post", utils.bind(self.file_open_post, self))
   self.valid = true
+end
+
+---@param dir DirData
+---@return boolean
+function DiffView:is_dir_viewed(dir)
+  local leaves = dir._node:leaves()
+  if #leaves == 0 then return false end
+
+  for _, node in ipairs(leaves) do
+    if not node.data.viewed then return false end
+  end
+  return true
+end
+
+function DiffView:apply_viewed_state()
+  for _, entry in self.files:iter() do
+    entry.viewed = viewed_state.is_viewed(
+      self.viewed_comparison_key,
+      entry.kind,
+      entry.path
+    )
+  end
+end
+
+function DiffView:collapse_viewed_dirs()
+  for _, tree in ipairs({
+    self.files.conflicting_tree,
+    self.files.working_tree,
+    self.files.staged_tree,
+  }) do
+    tree.root:deep_some(function(node)
+      if node:has_children() and self:is_dir_viewed(node.data) then
+        node.data.collapsed = true
+      end
+      return false
+    end)
+  end
+end
+
+---@param item FileEntry|DirData
+---@return FileEntry[]
+function DiffView:viewed_entries_for(item)
+  if type(item.collapsed) ~= "boolean" then
+    return { item --[[@as FileEntry ]] }
+  end
+
+  return vim.tbl_map(function(node)
+    return node.data
+  end, item._node:leaves())
+end
+
+---@param item FileEntry|DirData
+function DiffView:toggle_viewed(item)
+  local entries = self:viewed_entries_for(item)
+  if #entries == 0 then return end
+
+  local viewed = false
+  for _, entry in ipairs(entries) do
+    if not entry.viewed then
+      viewed = true
+      break
+    end
+  end
+
+  local ordered = self.panel:ordered_file_list()
+  local anchor = 0
+  for _, entry in ipairs(entries) do
+    local index = utils.vec_indexof(ordered, entry)
+    if index > anchor then anchor = index end
+    entry.viewed = viewed
+  end
+  viewed_state.set_many(self.viewed_comparison_key, entries, viewed)
+
+  if viewed then
+    for _, entry in ipairs(entries) do
+      local node = entry._node and entry._node.parent
+      while node and not node:is_root() do
+        if self:is_dir_viewed(node.data) then
+          node.data.collapsed = true
+        end
+        node = node.parent
+      end
+    end
+  elseif type(item.collapsed) == "boolean" then
+    item._node.data.collapsed = false
+    item._node:deep_some(function(node)
+      if node:has_children() then node.data.collapsed = false end
+      return false
+    end)
+  end
+
+  self.panel:update_components()
+  self.panel:render()
+  self.panel:redraw()
+  self.panel:reconstrain_cursor()
+
+  if viewed and config.get_config().viewed_files.post_mark_action == "next" then
+    for offset = 1, #ordered do
+      local candidate = ordered[(anchor + offset - 1) % #ordered + 1]
+      if not candidate.viewed then
+        self:set_file(candidate, false, true)
+        break
+      end
+    end
+  end
+end
+
+function DiffView:clear_viewed_files()
+  viewed_state.clear(self.viewed_comparison_key)
+
+  for _, entry in self.files:iter() do
+    entry.viewed = false
+  end
+  for _, tree in ipairs({
+    self.files.conflicting_tree,
+    self.files.working_tree,
+    self.files.staged_tree,
+  }) do
+    tree.root:deep_some(function(node)
+      if node:has_children() then node.data.collapsed = false end
+      return false
+    end)
+  end
+
+  self.panel:update_components()
+  self.panel:render()
+  self.panel:redraw()
+  self.panel:reconstrain_cursor()
 end
 
 function DiffView:post_open()
@@ -343,6 +479,12 @@ DiffView.update_files = debounce.debounce_trailing(
       new_head = self.adapter:head_rev()
       if new_head and self.left.commit ~= new_head.commit then
         self.left = new_head
+        self.viewed_comparison_key = viewed_state.activate(
+          self.adapter,
+          self.left,
+          self.right,
+          config.get_config().viewed_files.retention_days
+        )
       else
         new_head = nil
       end
@@ -461,6 +603,8 @@ DiffView.update_files = debounce.debounce_trailing(
 
     FileEntry.update_index_stat(self.adapter, index_stat)
     self.files:update_file_trees()
+    self:apply_viewed_state()
+    self:collapse_viewed_dirs()
     self.panel:update_components()
     self.panel:render()
     self.panel:redraw()

@@ -77,6 +77,8 @@ function CDiffView:init(opt)
       end
     end
     self.files:update_file_trees()
+    self:apply_viewed_state()
+    self:collapse_viewed_dirs()
 
     if self.panel.cur_file then
       vim.schedule(function()

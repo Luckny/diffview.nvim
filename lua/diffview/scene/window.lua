@@ -24,6 +24,7 @@ local HAS_NVIM_0_8 = vim.fn.has("nvim-0.8") == 1
 ---@field file vcs.File
 ---@field parent Layout
 ---@field emitter EventEmitter
+---@field buf_enter_autocmd? integer
 local Window = oop.create_class("Window")
 
 Window.winopt_store = {}
@@ -35,12 +36,13 @@ Window.winopt_store = {}
 
 ---@param opt Window.init.opt
 function Window:init(opt)
-  self.id = opt.id
+  self.id = nil
   self.file = opt.file
   self.parent = opt.parent
   self.emitter = EventEmitter()
 
   self.emitter:on("post_open", utils.bind(self.post_open, self))
+  self:set_id(opt.id)
 end
 
 function Window:destroy()
@@ -81,6 +83,20 @@ end
 
 function Window:is_focused()
   return self:is_valid() and api.nvim_get_current_win() == self.id
+end
+
+---@param bufnr integer
+function Window:on_buf_enter(bufnr)
+  if not self:is_focused() then return end
+
+  local expected_bufnr = self.file and self.file.bufnr
+  local null_bufnr = File.NULL_FILE.bufnr
+  if bufnr == expected_bufnr or bufnr == null_bufnr then return end
+
+  -- Navigation commands can replace a diff buffer in-place. Diff options are
+  -- window-local, so clear them from the tab before exposing the foreign
+  -- buffer. Reopening an entry applies the managed diff options again.
+  vim.cmd("diffoff!")
 end
 
 function Window:post_open()
@@ -329,7 +345,20 @@ function Window:apply_custom_folds()
 end
 
 function Window:set_id(id)
+  if self.buf_enter_autocmd then
+    pcall(api.nvim_del_autocmd, self.buf_enter_autocmd)
+    self.buf_enter_autocmd = nil
+  end
+
   self.id = id
+
+  if id then
+    self.buf_enter_autocmd = api.nvim_create_autocmd("BufEnter", {
+      callback = function(ev)
+        self:on_buf_enter(ev.buf)
+      end,
+    })
+  end
 end
 
 function Window:set_file(file)

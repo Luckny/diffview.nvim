@@ -2,8 +2,10 @@ local async = require("diffview.async")
 local RevType = require("diffview.vcs.rev").RevType
 local Window = require("diffview.scene.window").Window
 local Layout = require("diffview.scene.layout").Layout
+local config = require("diffview.config")
 local oop = require("diffview.oop")
 
+local api = vim.api
 local await = async.await
 
 local M = {}
@@ -52,8 +54,36 @@ Diff2.use_entry = async.void(function(self, entry)
 
   if self:is_valid() then
     await(self:open_files())
+    self:resize_windows()
   end
 end)
+
+function Diff2:resize_windows()
+  if not self:is_valid() then return end
+
+  local a_null = self.a:is_nulled()
+  local b_null = self.b:is_nulled()
+  local null_ratio = config.get_config().view.null_file_win_ratio
+  local a_ratio = 0.5
+
+  if a_null ~= b_null then
+    a_ratio = a_null and null_ratio or 1 - null_ratio
+  end
+
+  local get_size
+  local set_size
+  if self.name == "diff2_horizontal" then
+    get_size = api.nvim_win_get_width
+    set_size = api.nvim_win_set_width
+  else
+    get_size = api.nvim_win_get_height
+    set_size = api.nvim_win_set_height
+  end
+
+  local total = get_size(self.a.id) + get_size(self.b.id)
+  local target = math.max(1, math.min(total - 1, math.floor(total * a_ratio)))
+  set_size(self.a.id, target)
+end
 
 function Diff2:get_main_win()
   return self.b

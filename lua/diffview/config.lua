@@ -58,6 +58,7 @@ M.defaults = {
     retention_days = 30,
   },
   view = {
+    null_file_win_ratio = 0.25,
     default = {
       layout = "diff2_horizontal",
       disable_diagnostics = false,
@@ -581,6 +582,12 @@ function M.setup(user_config)
   do
     -- Validate layouts
     local view = M._config.view
+    if type(view.null_file_win_ratio) ~= "number"
+        or view.null_file_win_ratio <= 0
+        or view.null_file_win_ratio > 0.5 then
+      utils.err("'view.null_file_win_ratio' must be a number greater than 0 and at most 0.5.")
+      view.null_file_win_ratio = M.defaults.view.null_file_win_ratio
+    end
     local standard_layouts = { "diff2_horizontal", "diff2_vertical", -1 }
     local merge_layuots = {
       "diff1_plain",

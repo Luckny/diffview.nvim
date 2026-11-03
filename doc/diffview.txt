@@ -468,6 +468,16 @@ viewed_files                                    *diffview-config-viewed_files*
                 Remove comparison records that have not been used for this
                 many days.
 
+view.null_file_win_ratio                       *diffview-config-view.null_file_win_ratio*
+        Type: `number`, Default: `0.25`
+
+        Set the share of a two-way diff given to the empty window for added
+        or deleted files. The window containing file content receives the
+        remaining space. This applies to both side-by-side and stacked
+        layouts. Modified files continue to use equal-sized windows.
+
+        Values must be greater than `0` and at most `0.5`.
+
 view.x.layout                                   *diffview-config-view.x.layout*
         Type: >
             "diff1_plain"

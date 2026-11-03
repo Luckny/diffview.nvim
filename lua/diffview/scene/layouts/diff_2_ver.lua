@@ -67,6 +67,7 @@ Diff2Ver.create = async.void(function(self, pivot)
   api.nvim_win_close(pivot, true)
   self.windows = { self.a, self.b }
   await(self:create_post())
+  self:resize_windows()
 end)
 
 M.Diff2Ver = Diff2Ver

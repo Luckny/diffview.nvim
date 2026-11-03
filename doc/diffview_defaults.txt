@@ -24,6 +24,7 @@ DEFAULT CONFIG                                  *diffview.defaults*
       retention_days = 30,
     },
     view = {
+      null_file_win_ratio = 0.25, -- Window share for the empty side of added/deleted files.
       -- Configure the layout and behavior of different types of views.
       -- Available layouts:
       --  'diff1_plain'

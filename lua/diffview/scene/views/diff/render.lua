@@ -150,6 +150,16 @@ local function render_files(listing_style, comp)
   render_file_tree(comp)
 end
 
+---@param files FileEntry[]
+---@return string
+local function viewed_count(files)
+  local viewed = 0
+  for _, file in ipairs(files) do
+    if file.viewed then viewed = viewed + 1 end
+  end
+  return ("(%d/%d)"):format(viewed, #files)
+end
+
 ---@param panel FilePanel
 return function(panel)
   if not panel.render_data then
@@ -176,7 +186,7 @@ return function(panel)
   if #panel.files.conflicting > 0 then
     comp = panel.components.conflicting.title.comp
     comp:add_text("Conflicts ", "DiffviewFilePanelTitle")
-    comp:add_text("(" .. #panel.files.conflicting .. ")", "DiffviewFilePanelCounter")
+    comp:add_text(viewed_count(panel.files.conflicting), "DiffviewFilePanelCounter")
     comp:ln()
 
     render_files(panel.listing_style, panel.components.conflicting.files.comp)
@@ -190,7 +200,7 @@ return function(panel)
   if #panel.files.working > 0 or not has_other_files then
     comp = panel.components.working.title.comp
     comp:add_text("Changes ", "DiffviewFilePanelTitle")
-    comp:add_text("(" .. #panel.files.working .. ")", "DiffviewFilePanelCounter")
+    comp:add_text(viewed_count(panel.files.working), "DiffviewFilePanelCounter")
     comp:ln()
 
     render_files(panel.listing_style, panel.components.working.files.comp)
@@ -200,7 +210,7 @@ return function(panel)
   if #panel.files.staged > 0 then
     comp = panel.components.staged.title.comp
     comp:add_text("Staged changes ", "DiffviewFilePanelTitle")
-    comp:add_text("(" .. #panel.files.staged .. ")", "DiffviewFilePanelCounter")
+    comp:add_text(viewed_count(panel.files.staged), "DiffviewFilePanelCounter")
     comp:ln()
 
     render_files(panel.listing_style, panel.components.staged.files.comp)

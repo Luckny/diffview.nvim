@@ -442,7 +442,8 @@ viewed_files                                    *diffview-config-viewed_files*
 
         Viewed files, and folders whose descendants are all viewed, use the
         `DiffviewFilePanelViewed` highlight. Fully viewed folders collapse
-        automatically, but can be expanded normally.
+        automatically, but can be expanded normally. Each file-panel section
+        shows its progress as `(viewed/total)`.
 
         The default `<leader>v` mapping can be replaced like any other
         |diffview-config-keymaps| entry: >
